@@ -33,9 +33,8 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/jobs").permitAll()
-                        .requestMatchers("/jobs/search").permitAll()
-                        .requestMatchers("/chat/**").permitAll() // ✅ ADD THIS
+                        .requestMatchers("/jobs/**").permitAll()
+                        .requestMatchers("/chat/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
