@@ -8,4 +8,5 @@ FROM eclipse-temurin:23-jdk-alpine
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 10000
-ENTRYPOINT ["java", "-Xmx256m", "-jar", "app.jar"]
+ENV SERVER_PORT=10000
+ENTRYPOINT ["java", "-Xmx256m", "-Dserver.port=10000", "-jar", "app.jar"]
