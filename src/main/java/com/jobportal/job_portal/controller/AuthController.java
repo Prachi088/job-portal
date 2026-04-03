@@ -50,6 +50,7 @@ public class AuthController {
         response.put("token", token);
         response.put("role", found.get().getRole());
         response.put("name", found.get().getName());
+        response.put("id", String.valueOf(found.get().getId())); // ← add this
         return ResponseEntity.ok(response);
     }
 }
