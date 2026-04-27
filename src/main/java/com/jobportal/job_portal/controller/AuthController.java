@@ -28,29 +28,36 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body("Email already exists!");
+        try {
+            if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+                return ResponseEntity.badRequest().body("Email already exists!");
+            }
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            User savedUser = userRepository.save(user);
+return ResponseEntity.ok(savedUser);        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
         }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepository.save(user);
-        return ResponseEntity.ok("User registered successfully!");
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User user) {
-        Optional<User> found = userRepository.findByEmail(user.getEmail());
-        if (found.isEmpty()) {
-            return ResponseEntity.badRequest().body("User not found!");
+        try {
+            Optional<User> found = userRepository.findByEmail(user.getEmail());
+            if (found.isEmpty()) {
+                return ResponseEntity.badRequest().body("User not found!");
+            }
+            if (!passwordEncoder.matches(user.getPassword(), found.get().getPassword())) {
+                return ResponseEntity.badRequest().body("Wrong password!");
+            }
+            String token = jwtUtil.generateToken(found.get().getEmail(), found.get().getRole());
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);
+            response.put("role", found.get().getRole());
+            response.put("name", found.get().getName());
+            response.put("id", String.valueOf(found.get().getId()));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Login failed: " + e.getMessage());
         }
-        if (!passwordEncoder.matches(user.getPassword(), found.get().getPassword())) {
-            return ResponseEntity.badRequest().body("Wrong password!");
-        }
-        String token = jwtUtil.generateToken(found.get().getEmail(), found.get().getRole());
-        Map<String, String> response = new HashMap<>();
-        response.put("token", token);
-        response.put("role", found.get().getRole());
-        response.put("name", found.get().getName());
-        response.put("id", String.valueOf(found.get().getId())); // ← add this
-        return ResponseEntity.ok(response);
     }
 }

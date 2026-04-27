@@ -18,17 +18,22 @@ public class ChatController {
 
     @PostMapping
     public ResponseEntity<Map<String, String>> chat(@RequestBody Map<String, String> request) {
+        try {
+            String message = request.get("message");
 
-        String message = request.get("message");
+            if (message == null || message.isBlank()) {
+                return ResponseEntity
+                        .badRequest()
+                        .body(Map.of("error", "Message cannot be empty"));
+            }
 
-        if (message == null || message.isBlank()) {
+            String reply = groqService.getResponse(message);
+
+            return ResponseEntity.ok(Map.of("reply", reply));
+        } catch (Exception e) {
             return ResponseEntity
                     .badRequest()
-                    .body(Map.of("error", "Message cannot be empty"));
+                    .body(Map.of("error", "Chat failed: " + e.getMessage()));
         }
-
-        String reply = groqService.getResponse(message);
-
-        return ResponseEntity.ok(Map.of("reply", reply));
     }
 }

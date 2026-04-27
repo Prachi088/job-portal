@@ -28,14 +28,22 @@ public class GroqService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
 
-        // Build request body
+        // Build system prompt
+        Map<String, Object> systemMessage = new HashMap<>();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", "You are a helpful assistant for a job portal. Help users with job applications, resume tips, interview preparation, and career advice. Keep responses concise and relevant.");
+
+        // Build user message
         Map<String, Object> message = new HashMap<>();
         message.put("role", "user");
         message.put("content", userMessage);
 
+        // Add both to messages list
         List<Map<String, Object>> messages = new ArrayList<>();
+        messages.add(systemMessage);
         messages.add(message);
 
+        // Build request body
         Map<String, Object> body = new HashMap<>();
         body.put("model", "llama-3.3-70b-versatile");
         body.put("messages", messages);

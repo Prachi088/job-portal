@@ -35,6 +35,4 @@ build/
 # Secrets
 .env
 src/main/resources/application.properties
-
-.env
-application-local.properties
+src/main/resources/application-local.properties

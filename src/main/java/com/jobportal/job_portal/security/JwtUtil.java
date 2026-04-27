@@ -2,17 +2,19 @@ package com.jobportal.job_portal.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Component;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 
 @Component
 public class JwtUtil {
 
-    private static final String SECRET = "jobportal_secret_key_must_be_32_chars!!";
-    private static final long EXPIRATION = 86400000; // 24 hours
-
+@Value("${jwt.secret}")
+private String SECRET;
+    @Value("${jwt.expiration}")
+    private long expiration;
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET.getBytes());
     }
@@ -22,8 +24,7 @@ public class JwtUtil {
                 .setSubject(email)
                 .claim("role", role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
