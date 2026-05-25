@@ -56,6 +56,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users").permitAll()   // ← ADD
+                        .requestMatchers(HttpMethod.GET, "/api/jobs").permitAll()    // ← ADD
+                        .requestMatchers(HttpMethod.GET, "/api/events").permitAll()  // ← ADD
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

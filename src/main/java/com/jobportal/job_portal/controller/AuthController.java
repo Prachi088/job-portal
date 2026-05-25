@@ -49,7 +49,11 @@ return ResponseEntity.ok(savedUser);        } catch (Exception e) {
             if (!passwordEncoder.matches(user.getPassword(), found.get().getPassword())) {
                 return ResponseEntity.badRequest().body("Wrong password!");
             }
-            String token = jwtUtil.generateToken(found.get().getEmail(), found.get().getRole());
+            String token = jwtUtil.generateToken(
+                    found.get().getEmail(),
+                    found.get().getRole(),
+                    found.get().getId()        // ← pass the user ID
+            );
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
             response.put("role", found.get().getRole());

@@ -16,6 +16,7 @@ public class JobController {
     @Autowired
     private JobRepository jobRepository;
 
+    // ── Create ────────────────────────────────────────────────────────────────
     @PostMapping
     public ResponseEntity<?> createJob(@RequestBody Job job) {
         try {
@@ -26,6 +27,7 @@ public class JobController {
         }
     }
 
+    // ── Get all ───────────────────────────────────────────────────────────────
     @GetMapping
     public ResponseEntity<?> getAllJobs() {
         try {
@@ -36,25 +38,38 @@ public class JobController {
         }
     }
 
+    // ── Get by ID ─────────────────────────────────────────────────────────────
     @GetMapping("/{id}")
     public ResponseEntity<?> getJobById(@PathVariable Long id) {
         try {
             Job job = jobRepository.findById(id).orElse(null);
-            if (job == null) {
-                return ResponseEntity.notFound().build();
-            }
+            if (job == null) return ResponseEntity.notFound().build();
             return ResponseEntity.ok(job);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to fetch job: " + e.getMessage());
         }
     }
 
+    // ── FIX: Get jobs posted by a specific recruiter ──────────────────────────
+    // This endpoint was completely missing — the frontend was calling
+    // GET /jobs/recruiter/{recruiterId} but got a 404 every time because
+    // no such route existed, AND because Job had no recruiterId field.
+    @GetMapping("/recruiter/{recruiterId}")
+    public ResponseEntity<?> getJobsByRecruiter(@PathVariable Long recruiterId) {
+        try {
+            List<Job> jobs = jobRepository.findByRecruiterId(recruiterId);
+            return ResponseEntity.ok(jobs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body("Failed to fetch recruiter jobs: " + e.getMessage());
+        }
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────────────
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteJob(@PathVariable Long id) {
         try {
-            if (!jobRepository.existsById(id)) {
-                return ResponseEntity.notFound().build();
-            }
+            if (!jobRepository.existsById(id)) return ResponseEntity.notFound().build();
             jobRepository.deleteById(id);
             return ResponseEntity.ok("Job deleted successfully");
         } catch (Exception e) {
@@ -62,6 +77,7 @@ public class JobController {
         }
     }
 
+    // ── Search ────────────────────────────────────────────────────────────────
     @GetMapping("/search")
     public ResponseEntity<?> searchJobs(@RequestParam String title) {
         try {
@@ -71,4 +87,5 @@ public class JobController {
             return ResponseEntity.badRequest().body("Failed to search jobs: " + e.getMessage());
         }
     }
+
 }

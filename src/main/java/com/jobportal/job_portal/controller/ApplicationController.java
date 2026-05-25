@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,25 +50,32 @@ public class ApplicationController {
         try {
             List<Application> applications = applicationRepository.findByJobId(jobId);
 
-            // Get user details for each application
+            // FIX: Map.of() throws NullPointerException if ANY value is null.
+            // Switched to HashMap which allows null values, so optional user
+            // profile fields (phone, skills, etc.) don't crash the endpoint.
             List<Map<String, Object>> applicationsWithUsers = applications.stream().map(app -> {
                 User user = userRepository.findById(app.getUserId()).orElse(null);
-                return Map.of(
-                    "id", app.getId(),
-                    "jobId", app.getJobId(),
-                    "userId", app.getUserId(),
-                    "status", app.getStatus(),
-                    "user", user != null ? Map.of(
-                        "id", user.getId(),
-                        "name", user.getName(),
-                        "email", user.getEmail(),
-                        "phone", user.getPhone(),
-                        "skills", user.getSkills(),
-                        "experience", user.getExperience(),
-                        "education", user.getEducation(),
-                        "resumeFileName", user.getResumeFileName()
-                    ) : null
-                );
+
+                Map<String, Object> userMap = new HashMap<>();
+                if (user != null) {
+                    userMap.put("id",             user.getId());
+                    userMap.put("name",           user.getName());
+                    userMap.put("email",          user.getEmail());
+                    userMap.put("phone",          user.getPhone());
+                    userMap.put("skills",         user.getSkills());
+                    userMap.put("experience",     user.getExperience());
+                    userMap.put("education",      user.getEducation());
+                    userMap.put("resumeFileName", user.getResumeFileName());
+                }
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("id",     app.getId());
+                result.put("jobId",  app.getJobId());
+                result.put("userId", app.getUserId());
+                result.put("status", app.getStatus());
+                result.put("user",   user != null ? userMap : null);
+                return result;
+
             }).collect(Collectors.toList());
 
             return ResponseEntity.ok(applicationsWithUsers);
@@ -87,7 +95,9 @@ public class ApplicationController {
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateApplicationStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> updateApplicationStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request) {
         try {
             String status = request.get("status");
             Application application = applicationRepository.findById(id).orElse(null);
