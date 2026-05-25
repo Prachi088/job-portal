@@ -29,7 +29,7 @@ public class User {
 
     // Recruiter specific fields
     private String company;
-    @Column(name = "\"current_role\"")
+    @Column(name = "current_role")
     private String currentRole;
     private String linkedinUrl;
     private String website;
