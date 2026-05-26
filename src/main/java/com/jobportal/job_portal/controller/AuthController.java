@@ -27,27 +27,29 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user) {
+    public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
         try {
-            // FIX: validate required fields before attempting to save.
-            // Without this, a request missing name/email/password would hit
-            // the DB and produce a confusing constraint-violation error.
-            if (user.getEmail() == null || user.getEmail().isBlank()) {
+            String email    = body.get("email");
+            String password = body.get("password");
+            String name     = body.get("name");
+            String role     = body.get("role");
+
+            if (email == null || email.isBlank())
                 return ResponseEntity.badRequest().body("Email is required");
-            }
-            if (user.getPassword() == null || user.getPassword().isBlank()) {
+            if (password == null || password.isBlank())
                 return ResponseEntity.badRequest().body("Password is required");
-            }
-            if (user.getName() == null || user.getName().isBlank()) {
+            if (name == null || name.isBlank())
                 return ResponseEntity.badRequest().body("Name is required");
-            }
-            if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            if (userRepository.findByEmail(email).isPresent())
                 return ResponseEntity.badRequest().body("Email already exists!");
-            }
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+            User user = new User();
+            user.setEmail(email);
+            user.setName(name);
+            user.setRole(role != null ? role : "STUDENT");
+            user.setPassword(passwordEncoder.encode(password));
+
             User savedUser = userRepository.save(user);
-            // FIX: was returning savedUser directly on the same line as the save
-            // call (formatting error). Now on its own line for clarity.
             return ResponseEntity.ok(savedUser);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
@@ -55,22 +57,22 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User user) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         try {
-            // FIX: validate input before hitting the database
-            if (user.getEmail() == null || user.getEmail().isBlank()) {
+            String email    = body.get("email");
+            String password = body.get("password");
+
+            if (email == null || email.isBlank())
                 return ResponseEntity.badRequest().body("Email is required");
-            }
-            if (user.getPassword() == null || user.getPassword().isBlank()) {
+            if (password == null || password.isBlank())
                 return ResponseEntity.badRequest().body("Password is required");
-            }
-            Optional<User> found = userRepository.findByEmail(user.getEmail());
-            if (found.isEmpty()) {
+
+            Optional<User> found = userRepository.findByEmail(email);
+            if (found.isEmpty())
                 return ResponseEntity.badRequest().body("User not found!");
-            }
-            if (!passwordEncoder.matches(user.getPassword(), found.get().getPassword())) {
+            if (!passwordEncoder.matches(password, found.get().getPassword()))
                 return ResponseEntity.badRequest().body("Wrong password!");
-            }
+
             String token = jwtUtil.generateToken(
                     found.get().getEmail(),
                     found.get().getRole(),
@@ -78,9 +80,9 @@ public class AuthController {
             );
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
-            response.put("role", found.get().getRole());
-            response.put("name", found.get().getName());
-            response.put("id", String.valueOf(found.get().getId()));
+            response.put("role",  found.get().getRole());
+            response.put("name",  found.get().getName());
+            response.put("id",    String.valueOf(found.get().getId()));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Login failed: " + e.getMessage());
