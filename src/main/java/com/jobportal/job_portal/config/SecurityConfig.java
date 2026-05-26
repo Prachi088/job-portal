@@ -15,7 +15,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 
 import java.util.List;
 
@@ -56,9 +55,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/users").permitAll()   // ← ADD
-                        .requestMatchers(HttpMethod.GET, "/api/jobs").permitAll()    // ← ADD
-                        .requestMatchers(HttpMethod.GET, "/api/events").permitAll()  // ← ADD
+                        .requestMatchers(HttpMethod.GET, "/api/users").permitAll()
+                        // FIX: was "/api/jobs" but JobController is mapped to "/jobs".
+                        // Changed to "/jobs" so unauthenticated GET requests to the
+                        // job listing page are actually permitted.
+                        .requestMatchers(HttpMethod.GET, "/jobs").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/jobs/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/events").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/connections/users/all").permitAll()
                         .anyRequest().authenticated()
                 )

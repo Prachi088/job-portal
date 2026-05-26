@@ -27,6 +27,10 @@ public class ApplicationController {
     @PostMapping
     public ResponseEntity<?> applyForJob(@RequestBody Application application) {
         try {
+            // FIX: validate that userId and jobId are present before saving
+            if (application.getUserId() == null || application.getJobId() == null) {
+                return ResponseEntity.badRequest().body("userId and jobId are required");
+            }
             application.setStatus("APPLIED");
             Application saved = applicationRepository.save(application);
             return ResponseEntity.ok(saved);
@@ -50,11 +54,14 @@ public class ApplicationController {
         try {
             List<Application> applications = applicationRepository.findByJobId(jobId);
 
-            // FIX: Map.of() throws NullPointerException if ANY value is null.
-            // Switched to HashMap which allows null values, so optional user
-            // profile fields (phone, skills, etc.) don't crash the endpoint.
             List<Map<String, Object>> applicationsWithUsers = applications.stream().map(app -> {
-                User user = userRepository.findById(app.getUserId()).orElse(null);
+                // FIX: guard against null userId before hitting the repository.
+                // A null userId would cause findById to throw an exception,
+                // crashing the entire endpoint for all applicants on that job.
+                User user = null;
+                if (app.getUserId() != null) {
+                    user = userRepository.findById(app.getUserId()).orElse(null);
+                }
 
                 Map<String, Object> userMap = new HashMap<>();
                 if (user != null) {
@@ -100,6 +107,10 @@ public class ApplicationController {
             @RequestBody Map<String, String> request) {
         try {
             String status = request.get("status");
+            // FIX: validate the incoming status value before applying it
+            if (status == null || status.isBlank()) {
+                return ResponseEntity.badRequest().body("Status field is required");
+            }
             Application application = applicationRepository.findById(id).orElse(null);
             if (application == null) {
                 return ResponseEntity.notFound().build();

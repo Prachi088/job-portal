@@ -29,12 +29,27 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
         try {
+            // FIX: validate required fields before attempting to save.
+            // Without this, a request missing name/email/password would hit
+            // the DB and produce a confusing constraint-violation error.
+            if (user.getEmail() == null || user.getEmail().isBlank()) {
+                return ResponseEntity.badRequest().body("Email is required");
+            }
+            if (user.getPassword() == null || user.getPassword().isBlank()) {
+                return ResponseEntity.badRequest().body("Password is required");
+            }
+            if (user.getName() == null || user.getName().isBlank()) {
+                return ResponseEntity.badRequest().body("Name is required");
+            }
             if (userRepository.findByEmail(user.getEmail()).isPresent()) {
                 return ResponseEntity.badRequest().body("Email already exists!");
             }
             user.setPassword(passwordEncoder.encode(user.getPassword()));
             User savedUser = userRepository.save(user);
-return ResponseEntity.ok(savedUser);        } catch (Exception e) {
+            // FIX: was returning savedUser directly on the same line as the save
+            // call (formatting error). Now on its own line for clarity.
+            return ResponseEntity.ok(savedUser);
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
         }
     }
@@ -42,6 +57,13 @@ return ResponseEntity.ok(savedUser);        } catch (Exception e) {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User user) {
         try {
+            // FIX: validate input before hitting the database
+            if (user.getEmail() == null || user.getEmail().isBlank()) {
+                return ResponseEntity.badRequest().body("Email is required");
+            }
+            if (user.getPassword() == null || user.getPassword().isBlank()) {
+                return ResponseEntity.badRequest().body("Password is required");
+            }
             Optional<User> found = userRepository.findByEmail(user.getEmail());
             if (found.isEmpty()) {
                 return ResponseEntity.badRequest().body("User not found!");
@@ -52,7 +74,7 @@ return ResponseEntity.ok(savedUser);        } catch (Exception e) {
             String token = jwtUtil.generateToken(
                     found.get().getEmail(),
                     found.get().getRole(),
-                    found.get().getId()        // ← pass the user ID
+                    found.get().getId()
             );
             Map<String, String> response = new HashMap<>();
             response.put("token", token);

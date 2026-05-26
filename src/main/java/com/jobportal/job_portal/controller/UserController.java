@@ -60,15 +60,21 @@ public class UserController {
                 return ResponseEntity.notFound().build();
             }
 
-            if (profileData.getPhone() != null) user.setPhone(profileData.getPhone());
-            if (profileData.getAddress() != null) user.setAddress(profileData.getAddress());
-            if (profileData.getSkills() != null) user.setSkills(profileData.getSkills());
-            if (profileData.getExperience() != null) user.setExperience(profileData.getExperience());
-            if (profileData.getEducation() != null) user.setEducation(profileData.getEducation());
-            if (profileData.getCompany() != null) user.setCompany(profileData.getCompany());
+            // Existing fields
+            if (profileData.getPhone() != null)       user.setPhone(profileData.getPhone());
+            if (profileData.getAddress() != null)     user.setAddress(profileData.getAddress());
+            if (profileData.getSkills() != null)      user.setSkills(profileData.getSkills());
+            if (profileData.getExperience() != null)  user.setExperience(profileData.getExperience());
+            if (profileData.getEducation() != null)   user.setEducation(profileData.getEducation());
+            if (profileData.getCompany() != null)     user.setCompany(profileData.getCompany());
             if (profileData.getCurrentRole() != null) user.setCurrentRole(profileData.getCurrentRole());
             if (profileData.getLinkedinUrl() != null) user.setLinkedinUrl(profileData.getLinkedinUrl());
-            if (profileData.getWebsite() != null) user.setWebsite(profileData.getWebsite());
+            if (profileData.getWebsite() != null)     user.setWebsite(profileData.getWebsite());
+
+            // NEW fields
+            if (profileData.getBio() != null)         user.setBio(profileData.getBio());
+            if (profileData.getProjects() != null)    user.setProjects(profileData.getProjects());
+            if (profileData.getBatch() != null)       user.setBatch(profileData.getBatch());
 
             User updatedUser = userRepository.save(user);
             return ResponseEntity.ok(updatedUser);
@@ -84,21 +90,17 @@ public class UserController {
             if (user == null) {
                 return ResponseEntity.notFound().build();
             }
-
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest().body("Resume file is required");
             }
-
-            // Convert file to Base64 and store in DB
             String base64Data = Base64.getEncoder().encodeToString(file.getBytes());
             user.setResumeFileName(file.getOriginalFilename());
-            user.setResumeFilePath("db"); // marker to indicate stored in DB
+            user.setResumeFilePath("db");
             user.setResumeData(base64Data);
             userRepository.save(user);
-
             return ResponseEntity.ok(Map.of(
-                "message", "Resume uploaded successfully",
-                "fileName", file.getOriginalFilename()
+                    "message", "Resume uploaded successfully",
+                    "fileName", file.getOriginalFilename()
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to upload resume: " + e.getMessage());
@@ -112,7 +114,6 @@ public class UserController {
             if (user == null || user.getResumeData() == null) {
                 return ResponseEntity.notFound().build();
             }
-
             byte[] fileContent = Base64.getDecoder().decode(user.getResumeData());
             return ResponseEntity.ok()
                     .header("Content-Disposition", "attachment; filename=\"" + user.getResumeFileName() + "\"")
