@@ -1,6 +1,7 @@
 package com.jobportal.job_portal.repository;
 
 import com.jobportal.job_portal.entity.Connection;
+import com.jobportal.job_portal.entity.ConnectionRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ConnectionRepository extends JpaRepository<Connection, Long> {
+    List<ConnectionRequest> findBySenderIdAndStatus(Long senderId, String status);
 
     List<Connection> findByUser1IdOrUser2Id(Long user1Id, Long user2Id);
 

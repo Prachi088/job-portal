@@ -81,6 +81,24 @@ public class ConnectionController {
         return ResponseEntity.ok(result);
     }
 
+    // ── Get pending outgoing requests sent BY a user (ConnectPage sync) ──────
+    @GetMapping("/requests/sent/{userId}")
+    public ResponseEntity<?> getSentRequests(@PathVariable Long userId) {
+        List<ConnectionRequest> requests =
+                requestRepo.findBySenderIdAndStatus(userId, "PENDING");
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (ConnectionRequest req : requests) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id",         req.getId());
+            map.put("receiverId", req.getReceiverId());
+            map.put("status",     req.getStatus());
+            map.put("createdAt",  req.getCreatedAt());
+            result.add(map);
+        }
+        return ResponseEntity.ok(result);
+    }
+
     // ── Accept or reject a request ────────────────────────────────────────────
     @PutMapping("/request/{id}")
     public ResponseEntity<?> updateRequest(@PathVariable Long id,
