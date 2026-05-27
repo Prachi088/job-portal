@@ -33,12 +33,19 @@ public class ConnectionController {
 
         if (senderId == null || receiverId == null)
             return ResponseEntity.badRequest().body("senderId and receiverId are required");
+
         if (senderId.equals(receiverId))
             return ResponseEntity.badRequest().body("Cannot send a connection request to yourself");
+
+        // Use bidirectional check to catch connections stored in either column order.
         if (connectionRepo.existsBetweenUsers(senderId, receiverId))
             return ResponseEntity.badRequest().body("Already connected");
+
         if (requestRepo.existsBySenderIdAndReceiverId(senderId, receiverId))
             return ResponseEntity.badRequest().body("Request already sent");
+
+        // Block if the other side already sent a request to prevent two
+        // pending rows for the same pair.
         if (requestRepo.existsBySenderIdAndReceiverId(receiverId, senderId))
             return ResponseEntity.badRequest().body("A request from this user is already pending");
 
@@ -65,6 +72,8 @@ public class ConnectionController {
         requestRepo.save(req);
 
         if ("ACCEPTED".equals(status)) {
+            // Bidirectional guard prevents a duplicate Connection row if the
+            // endpoint is hit twice (e.g. double-click or retry).
             if (!connectionRepo.existsBetweenUsers(req.getSenderId(), req.getReceiverId())) {
                 Connection conn = new Connection();
                 conn.setUser1Id(req.getSenderId());
@@ -76,28 +85,13 @@ public class ConnectionController {
         return ResponseEntity.ok(req);
     }
 
-    // ── Get ACCEPTED requests sent BY a user (so sender knows they were accepted)
-    // MUST be declared before /requests/{userId} to avoid Spring route ambiguity
-    @GetMapping("/requests/accepted/{userId}")
-    public ResponseEntity<?> getAcceptedRequests(@PathVariable Long userId) {
-        List<ConnectionRequest> accepted =
-                requestRepo.findBySenderIdAndStatus(userId, "ACCEPTED");
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (ConnectionRequest req : accepted) {
-            User receiver = userRepo.findById(req.getReceiverId()).orElse(null);
-            Map<String, Object> map = new HashMap<>();
-            map.put("id",           req.getId());
-            map.put("receiverId",   req.getReceiverId());
-            map.put("receiverName", receiver != null ? receiver.getName() : "Unknown");
-            map.put("receiverRole", receiver != null ? receiver.getRole() : "");
-            map.put("updatedAt",    req.getCreatedAt());
-            result.add(map);
-        }
-        return ResponseEntity.ok(result);
-    }
-
-    // ── Get PENDING outgoing requests sent BY a user (ConnectPage badge sync) ─
+    // ── Get pending OUTGOING requests sent BY a user ──────────────────────────
+    //
+    // IMPORTANT: this mapping (/requests/sent/{userId}) MUST be declared before
+    // /requests/{userId} in the source file. Although Spring MVC prioritises
+    // literal path segments over variables when dispatching, having the more
+    // specific route first avoids any ambiguity in older Spring Boot versions
+    // and makes the intent explicit to future readers.
     @GetMapping("/requests/sent/{userId}")
     public ResponseEntity<?> getSentRequests(@PathVariable Long userId) {
         List<ConnectionRequest> requests =
@@ -115,7 +109,7 @@ public class ConnectionController {
         return ResponseEntity.ok(result);
     }
 
-    // ── Get PENDING incoming requests for a user (Notifications page) ─────────
+    // ── Get pending INCOMING requests for a user (Notifications page) ─────────
     @GetMapping("/requests/{userId}")
     public ResponseEntity<?> getRequests(@PathVariable Long userId) {
         List<ConnectionRequest> requests =
@@ -125,12 +119,12 @@ public class ConnectionController {
         for (ConnectionRequest req : requests) {
             User sender = userRepo.findById(req.getSenderId()).orElse(null);
             Map<String, Object> map = new HashMap<>();
-            map.put("id",           req.getId());
-            map.put("senderId",     req.getSenderId());
-            map.put("senderName",   sender != null ? sender.getName()   : "Unknown");
-            map.put("senderRole",   sender != null ? sender.getRole()   : "");
-            map.put("senderSkills", sender != null ? sender.getSkills() : "");
-            map.put("createdAt",    req.getCreatedAt());
+            map.put("id",          req.getId());
+            map.put("senderId",    req.getSenderId());
+            map.put("senderName",  sender != null ? sender.getName()   : "Unknown");
+            map.put("senderRole",  sender != null ? sender.getRole()   : "");
+            map.put("senderSkills",sender != null ? sender.getSkills() : "");
+            map.put("createdAt",   req.getCreatedAt());
             result.add(map);
         }
         return ResponseEntity.ok(result);
@@ -151,7 +145,7 @@ public class ConnectionController {
 
             Map<String, Object> map = new HashMap<>();
             map.put("connectionId", conn.getId());
-            map.put("userId",       other.getId());
+            map.put("userId",       other.getId());   // used by frontend for /chat/:userId
             map.put("name",         other.getName());
             map.put("role",         other.getRole());
             map.put("skills",       other.getSkills());
