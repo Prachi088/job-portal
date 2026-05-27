@@ -1,6 +1,7 @@
 package com.jobportal.job_portal.config;
 
 import com.jobportal.job_portal.security.JwtFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -51,37 +52,30 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                // FIX: Without an AuthenticationEntryPoint, Spring Security returns 403
+                // (not 401) for requests where no authentication is set — including
+                // expired JWTs, because JwtFilter silently skips them.
+                // This makes the frontend's response interceptor correctly distinguish
+                // "token expired / not logged in" (401) from "authenticated but forbidden" (403).
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"Unauthorized - token missing or expired\"}");
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
-                        // Preflight requests must always be allowed
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Auth endpoints — public
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/health").permitAll()
 
-                        // Public read-only endpoints
                         .requestMatchers(HttpMethod.GET, "/api/users").permitAll()
                         .requestMatchers(HttpMethod.GET, "/jobs").permitAll()
                         .requestMatchers(HttpMethod.GET, "/jobs/search").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/connections/requests/sent/**").permitAll()
-                        // Discover page: listing all users for the Connect page is public
-                        // so unauthenticated visitors can browse (they still can't send
-                        // requests without a token).
                         .requestMatchers(HttpMethod.GET, "/api/connections/users/all").permitAll()
 
-                        // Everything else — including all connection request endpoints
-                        // (GET /api/connections/requests/{userId},
-                        //  GET /api/connections/requests/sent/{userId},
-                        //  GET /api/connections/{userId},
-                        //  POST /api/connections/request,
-                        //  PUT  /api/connections/request/{id})
-                        // — requires a valid JWT.
-                        //
-                        // NOTE: the frontend uses { skipAuthRedirect: true } on these calls
-                        // so a 401 does NOT wipe the token or redirect to /login. This is
-                        // intentional: if the token is simply missing/expired the user sees
-                        // a graceful error toast instead of being force-logged out.
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
