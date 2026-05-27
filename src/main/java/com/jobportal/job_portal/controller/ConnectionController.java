@@ -37,18 +37,15 @@ public class ConnectionController {
         if (senderId.equals(receiverId))
             return ResponseEntity.badRequest().body("Cannot send a connection request to yourself");
 
-        // FIX: use existsBetweenUsers (bidirectional) instead of calling
-        // existsByUser1IdAndUser2Id twice. The old single-direction check missed
-        // connections stored in the reverse column order, so the guard was silently
-        // bypassed and duplicate rows could be inserted.
+        // Use bidirectional check to catch connections stored in either column order.
         if (connectionRepo.existsBetweenUsers(senderId, receiverId))
             return ResponseEntity.badRequest().body("Already connected");
 
         if (requestRepo.existsBySenderIdAndReceiverId(senderId, receiverId))
             return ResponseEntity.badRequest().body("Request already sent");
 
-        // Also block if the other side already sent a request (prevents two
-        // pending rows for the same pair sitting in the table).
+        // Block if the other side already sent a request to prevent two
+        // pending rows for the same pair.
         if (requestRepo.existsBySenderIdAndReceiverId(receiverId, senderId))
             return ResponseEntity.badRequest().body("A request from this user is already pending");
 
@@ -60,7 +57,59 @@ public class ConnectionController {
         return ResponseEntity.ok(requestRepo.save(req));
     }
 
-    // ── Get pending incoming requests (Notifications page) ───────────────────
+    // ── Accept or reject a request ────────────────────────────────────────────
+    @PutMapping("/request/{id}")
+    public ResponseEntity<?> updateRequest(@PathVariable Long id,
+                                           @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        if (!"ACCEPTED".equals(status) && !"REJECTED".equals(status))
+            return ResponseEntity.badRequest().body("Status must be ACCEPTED or REJECTED");
+
+        ConnectionRequest req = requestRepo.findById(id).orElse(null);
+        if (req == null) return ResponseEntity.notFound().build();
+
+        req.setStatus(status);
+        requestRepo.save(req);
+
+        if ("ACCEPTED".equals(status)) {
+            // Bidirectional guard prevents a duplicate Connection row if the
+            // endpoint is hit twice (e.g. double-click or retry).
+            if (!connectionRepo.existsBetweenUsers(req.getSenderId(), req.getReceiverId())) {
+                Connection conn = new Connection();
+                conn.setUser1Id(req.getSenderId());
+                conn.setUser2Id(req.getReceiverId());
+                conn.setConnectedAt(LocalDateTime.now());
+                connectionRepo.save(conn);
+            }
+        }
+        return ResponseEntity.ok(req);
+    }
+
+    // ── Get pending OUTGOING requests sent BY a user ──────────────────────────
+    //
+    // IMPORTANT: this mapping (/requests/sent/{userId}) MUST be declared before
+    // /requests/{userId} in the source file. Although Spring MVC prioritises
+    // literal path segments over variables when dispatching, having the more
+    // specific route first avoids any ambiguity in older Spring Boot versions
+    // and makes the intent explicit to future readers.
+    @GetMapping("/requests/sent/{userId}")
+    public ResponseEntity<?> getSentRequests(@PathVariable Long userId) {
+        List<ConnectionRequest> requests =
+                requestRepo.findBySenderIdAndStatus(userId, "PENDING");
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (ConnectionRequest req : requests) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id",         req.getId());
+            map.put("receiverId", req.getReceiverId());
+            map.put("status",     req.getStatus());
+            map.put("createdAt",  req.getCreatedAt());
+            result.add(map);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    // ── Get pending INCOMING requests for a user (Notifications page) ─────────
     @GetMapping("/requests/{userId}")
     public ResponseEntity<?> getRequests(@PathVariable Long userId) {
         List<ConnectionRequest> requests =
@@ -81,52 +130,6 @@ public class ConnectionController {
         return ResponseEntity.ok(result);
     }
 
-    // ── Get pending outgoing requests sent BY a user (ConnectPage sync) ──────
-    @GetMapping("/requests/sent/{userId}")
-    public ResponseEntity<?> getSentRequests(@PathVariable Long userId) {
-        List<ConnectionRequest> requests =
-                requestRepo.findBySenderIdAndStatus(userId, "PENDING");
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (ConnectionRequest req : requests) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id",         req.getId());
-            map.put("receiverId", req.getReceiverId());
-            map.put("status",     req.getStatus());
-            map.put("createdAt",  req.getCreatedAt());
-            result.add(map);
-        }
-        return ResponseEntity.ok(result);
-    }
-
-    // ── Accept or reject a request ────────────────────────────────────────────
-    @PutMapping("/request/{id}")
-    public ResponseEntity<?> updateRequest(@PathVariable Long id,
-                                           @RequestBody Map<String, String> body) {
-        String status = body.get("status");
-        if (!"ACCEPTED".equals(status) && !"REJECTED".equals(status))
-            return ResponseEntity.badRequest().body("Status must be ACCEPTED or REJECTED");
-
-        ConnectionRequest req = requestRepo.findById(id).orElse(null);
-        if (req == null) return ResponseEntity.notFound().build();
-
-        req.setStatus(status);
-        requestRepo.save(req);
-
-        if ("ACCEPTED".equals(status)) {
-            // FIX: use existsBetweenUsers (bidirectional) to prevent a duplicate
-            // Connection row if the endpoint is hit twice (e.g. double-click).
-            if (!connectionRepo.existsBetweenUsers(req.getSenderId(), req.getReceiverId())) {
-                Connection conn = new Connection();
-                conn.setUser1Id(req.getSenderId());
-                conn.setUser2Id(req.getReceiverId());
-                conn.setConnectedAt(LocalDateTime.now());
-                connectionRepo.save(conn);
-            }
-        }
-        return ResponseEntity.ok(req);
-    }
-
     // ── Get all connections for a user (Connections page + chat) ─────────────
     @GetMapping("/{userId}")
     public ResponseEntity<?> getConnections(@PathVariable Long userId) {
@@ -142,7 +145,7 @@ public class ConnectionController {
 
             Map<String, Object> map = new HashMap<>();
             map.put("connectionId", conn.getId());
-            map.put("userId",       other.getId());   // used by frontend to open /chat/:userId
+            map.put("userId",       other.getId());   // used by frontend for /chat/:userId
             map.put("name",         other.getName());
             map.put("role",         other.getRole());
             map.put("skills",       other.getSkills());

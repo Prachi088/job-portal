@@ -11,4 +11,7 @@ public interface ConnectionRequestRepository extends JpaRepository<ConnectionReq
     List<ConnectionRequest> findBySenderIdAndStatus(Long senderId, String status);
     Optional<ConnectionRequest> findBySenderIdAndReceiverId(Long senderId, Long receiverId);
     boolean existsBySenderIdAndReceiverId(Long senderId, Long receiverId);
+    List<ConnectionRequest> findBySenderIdAndStatusIn(Long senderId, List<String> statuses);
+    List<ConnectionRequest> findByReceiverIdAndStatusIn(Long receiverId, List<String> statuses);
+    boolean existsBySenderIdAndReceiverIdAndStatus(Long senderId, Long receiverId, String status);
 }

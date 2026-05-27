@@ -1,0 +1,146 @@
+Picked up JAVA_TOOL_OPTIONS: -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8
+Picked up JAVA_TOOL_OPTIONS: -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8
+22:02:07.935 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.jobportal.job_portal.ConnectionMessagingFlowTests]: ConnectionMessagingFlowTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+22:02:08.242 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.jobportal.job_portal.JobPortalApplication for test class com.jobportal.job_portal.ConnectionMessagingFlowTests
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.5)
+
+2026-05-26T22:02:09.669+05:30  INFO 17984 --- [           main] c.j.j.ConnectionMessagingFlowTests       : Starting ConnectionMessagingFlowTests using Java 25.0.2 with PID 17984 (started by hp in C:\Users\hp\Desktop\Courses\SpringBoot\job-portal)
+2026-05-26T22:02:09.671+05:30  INFO 17984 --- [           main] c.j.j.ConnectionMessagingFlowTests       : No active profile set, falling back to 1 default profile: "default"
+2026-05-26T22:02:12.350+05:30  INFO 17984 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-26T22:02:12.724+05:30  INFO 17984 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 332 ms. Found 8 JPA repository interfaces.
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.apache.tomcat.jni.Library in an unnamed module (file:/C:/Users/hp/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.20/tomcat-embed-core-10.1.20.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+2026-05-26T22:02:15.077+05:30  INFO 17984 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-05-26T22:02:15.101+05:30  INFO 17984 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-26T22:02:15.102+05:30  INFO 17984 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.20]
+2026-05-26T22:02:15.283+05:30  INFO 17984 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-05-26T22:02:15.285+05:30  INFO 17984 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5567 ms
+2026-05-26T22:02:16.783+05:30  INFO 17984 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-26T22:02:17.314+05:30  INFO 17984 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.4.Final
+2026-05-26T22:02:17.868+05:30  INFO 17984 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-05-26T22:02:19.103+05:30  INFO 17984 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-26T22:02:19.177+05:30  INFO 17984 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-05-26T22:02:19.683+05:30  INFO 17984 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
+2026-05-26T22:02:19.692+05:30  INFO 17984 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-05-26T22:02:19.750+05:30  WARN 17984 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-26T22:02:21.832+05:30  INFO 17984 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+Hibernate: drop table if exists applications cascade 
+Hibernate: drop table if exists connection_requests cascade 
+Hibernate: drop table if exists connections cascade 
+Hibernate: drop table if exists event_applications cascade 
+Hibernate: drop table if exists events cascade 
+Hibernate: drop table if exists jobs cascade 
+Hibernate: drop table if exists messages cascade 
+Hibernate: drop table if exists users cascade 
+Hibernate: create table applications (id bigint generated by default as identity, job_id bigint, user_id bigint, status varchar(255), primary key (id))
+Hibernate: create table connection_requests (created_at timestamp(6), id bigint generated by default as identity, receiver_id bigint, sender_id bigint, status varchar(255), primary key (id))
+Hibernate: create table connections (connected_at timestamp(6), id bigint generated by default as identity, user1id bigint, user2id bigint, primary key (id))
+Hibernate: create table event_applications (applied_at timestamp(6), event_id bigint, id bigint generated by default as identity, user_id bigint, status varchar(255), primary key (id))
+Hibernate: create table events (event_date timestamp(6), id bigint generated by default as identity, recruiter_id bigint, requirements varchar(500), description varchar(1000), location varchar(255), organizer varchar(255), title varchar(255), primary key (id))
+Hibernate: create table jobs (id bigint generated by default as identity, recruiter_id bigint, description varchar(1000), company varchar(255), location varchar(255), salary varchar(255), title varchar(255), type varchar(255), primary key (id))
+Hibernate: create table messages (is_read boolean, created_at timestamp(6), id bigint generated by default as identity, receiver_id bigint, sender_id bigint, content varchar(255), primary key (id))
+Hibernate: create table users (id bigint generated by default as identity, address varchar(255), batch varchar(255), bio varchar(255), company varchar(255), education varchar(255), email varchar(255) unique, experience varchar(255), linkedin_url varchar(255), name varchar(255), password varchar(255), phone varchar(255), projects varchar(255), resume_data TEXT, resume_file_name varchar(255), resume_file_path varchar(255), role varchar(255), skills varchar(255), user_current_role varchar(255), website varchar(255), primary key (id))
+2026-05-26T22:02:21.980+05:30  INFO 17984 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-26T22:02:24.230+05:30  INFO 17984 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-05-26T22:02:28.503+05:30  INFO 17984 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@8d15c75, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@5dcaa37a, org.springframework.security.web.context.SecurityContextHolderFilter@5debb4c0, org.springframework.security.web.header.HeaderWriterFilter@1e0771af, org.springframework.web.filter.CorsFilter@542aa32a, org.springframework.security.web.authentication.logout.LogoutFilter@4cdc345f, com.jobportal.job_portal.security.JwtFilter@2de6f1bc, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@310ff09e, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@26c0afdf, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@55f0ba66, org.springframework.security.web.session.SessionManagementFilter@ffad70, org.springframework.security.web.access.ExceptionTranslationFilter@29a01820, org.springframework.security.web.access.intercept.AuthorizationFilter@298f8835]
+2026-05-26T22:02:29.143+05:30  INFO 17984 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring TestDispatcherServlet ''
+2026-05-26T22:02:29.145+05:30  INFO 17984 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-05-26T22:02:29.146+05:30  INFO 17984 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-05-26T22:02:29.228+05:30  INFO 17984 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 60913 (http) with context path ''
+2026-05-26T22:02:29.277+05:30  INFO 17984 --- [           main] c.j.j.ConnectionMessagingFlowTests       : Started ConnectionMessagingFlowTests in 20.515 seconds (process running for 23.848)
+WARNING: A Java agent has been loaded dynamically (C:\Users\hp\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.13\byte-buddy-agent-1.14.13.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+Hibernate: select u1_0.id,u1_0.address,u1_0.batch,u1_0.bio,u1_0.company,u1_0.user_current_role,u1_0.education,u1_0.email,u1_0.experience,u1_0.linkedin_url,u1_0.name,u1_0.password,u1_0.phone,u1_0.projects,u1_0.resume_data,u1_0.resume_file_name,u1_0.resume_file_path,u1_0.role,u1_0.skills,u1_0.website from users u1_0
+Hibernate: insert into users (address,batch,bio,company,user_current_role,education,email,experience,linkedin_url,name,password,phone,projects,resume_data,resume_file_name,resume_file_path,role,skills,website,id) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,default)
+Hibernate: insert into users (address,batch,bio,company,user_current_role,education,email,experience,linkedin_url,name,password,phone,projects,resume_data,resume_file_name,resume_file_path,role,skills,website,id) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,default)
+Hibernate: select count(*) from users u1_0 where u1_0.id=?
+Hibernate: select count(*) from users u1_0 where u1_0.id=?
+Hibernate: select case when count(c1_0.id)>0 then true else false end from connections c1_0 where (c1_0.user1id=? and c1_0.user2id=?) or (c1_0.user1id=? and c1_0.user2id=?)
+Hibernate: select cr1_0.id from connection_requests cr1_0 where cr1_0.sender_id=? and cr1_0.receiver_id=? fetch first ? rows only
+Hibernate: select cr1_0.id from connection_requests cr1_0 where cr1_0.sender_id=? and cr1_0.receiver_id=? fetch first ? rows only
+Hibernate: insert into connection_requests (created_at,receiver_id,sender_id,status,id) values (?,?,?,?,default)
+
+MockHttpServletRequest:
+      HTTP Method = POST
+      Request URI = /api/connections/request
+       Parameters = {}
+          Headers = [Content-Type:"application/json;charset=UTF-8", Authorization:"Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZUBleGFtcGxlLmNvbSIsInJvbGUiOiJVU0VSIiwiaWQiOjEsImlhdCI6MTc3OTgxMzE1MCwiZXhwIjoxNzc5ODk5NTUwfQ.yDtwjrDLn1dN117_cAfvfuwzAOmoCOsw0qGfDrTMyY8", Content-Length:"29"]
+             Body = {"receiverId":2,"senderId":1}
+    Session Attrs = {}
+
+Handler:
+             Type = com.jobportal.job_portal.controller.ConnectionController
+           Method = com.jobportal.job_portal.controller.ConnectionController#sendRequest(String, Map)
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 200
+    Error message = null
+          Headers = [Vary:"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", Content-Type:"application/json", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = application/json
+             Body = {"id":1,"senderId":1,"receiverId":2,"status":"PENDING","createdAt":"2026-05-26T22:02:31.008701"}
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 23.89 s <<< FAILURE! -- in com.jobportal.job_portal.ConnectionMessagingFlowTests
+[ERROR] com.jobportal.job_portal.ConnectionMessagingFlowTests.connectionRequestAcceptanceAndMessagingFlow -- Time elapsed: 1.846 s <<< FAILURE!
+java.lang.AssertionError: 
+
+Expecting map:
+  {"createdAt"="2026-05-26T22:02:31.008701", "id"=1, "receiverId"=2, "senderId"=1, "status"="PENDING"}
+to contain entries:
+  ["senderId"=1L]
+but the following map entries had different values:
+  ["senderId"=1 (expected: 1L)]
+	at com.jobportal.job_portal.ConnectionMessagingFlowTests.connectionRequestAcceptanceAndMessagingFlow(ConnectionMessagingFlowTests.java:90)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+
+[ERROR] Failures: 
+[ERROR]   ConnectionMessagingFlowTests.connectionRequestAcceptanceAndMessagingFlow:90 
+Expecting map:
+  {"createdAt"="2026-05-26T22:02:31.008701", "id"=1, "receiverId"=2, "senderId"=1, "status"="PENDING"}
+to contain entries:
+  ["senderId"=1L]
+but the following map entries had different values:
+  ["senderId"=1 (expected: 1L)]
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.1.2:test (default-test) on project job-portal: There are test failures.
+[ERROR] 
+[ERROR] Please refer to C:\Users\hp\Desktop\Courses\SpringBoot\job-portal\target\surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
