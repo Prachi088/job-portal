@@ -6,10 +6,10 @@ import com.jobportal.job_portal.entity.User;
 import com.jobportal.job_portal.repository.ConnectionRepository;
 import com.jobportal.job_portal.repository.ConnectionRequestRepository;
 import com.jobportal.job_portal.repository.UserRepository;
-import com.jobportal.job_portal.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -27,16 +27,16 @@ public class ConnectionController {
     @Autowired ConnectionRepository        connectionRepo;
     @Autowired UserRepository              userRepo;
 
-    // FIX: injected so updateRequest can validate the caller's identity from
-    // the JWT, the same pattern MessageController already uses.
-    @Autowired JwtUtil jwtUtil;
-
-    // ── Helper: extract and validate caller ID from Authorization header ──────
-    private Long getAuthenticatedUserId(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
-        String token = authHeader.substring(7);
-        if (!jwtUtil.isTokenValid(token)) return null;
-        return jwtUtil.extractUserId(token);
+    // ── Helper: get the email of the authenticated caller from SecurityContext ─
+    // JwtFilter already validated the token and set the principal as the user's
+    // email. We look up the User row by email to get their numeric ID.
+    // This is more reliable than re-parsing the JWT in the controller because
+    // Spring Security has already done the validation work.
+    private Long getAuthenticatedUserId() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String email = (String) auth.getPrincipal();
+        return userRepo.findByEmail(email).map(u -> u.getId()).orElse(null);
     }
 
     // ── Send a connection request ─────────────────────────────────────────────
@@ -76,19 +76,17 @@ public class ConnectionController {
     // ── Accept or reject a request ────────────────────────────────────────────
     @PutMapping("/request/{id}")
     public ResponseEntity<?> updateRequest(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Long id,
             @RequestBody Map<String, String> body) {
 
-        // FIX: Validate the caller's identity from the JWT.
-        // Previously this endpoint had NO ownership check — any authenticated
-        // user could accept or reject any request just by knowing its ID.
-        // Now we extract the caller's user ID from the token and verify they
-        // are the intended receiver of this particular request.
-        Long callerId = getAuthenticatedUserId(authHeader);
+        // Spring Security already validated the JWT in JwtFilter before this
+        // method is reached. We read the caller's identity from SecurityContext
+        // (set by JwtFilter) rather than re-parsing the token, which avoids
+        // any clock-skew or re-validation failures.
+        Long callerId = getAuthenticatedUserId();
         if (callerId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Authorization header is missing or token is invalid/expired");
+                    .body("Could not identify the authenticated user");
         }
 
         String status = body.get("status");
