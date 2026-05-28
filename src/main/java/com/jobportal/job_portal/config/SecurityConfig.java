@@ -33,52 +33,113 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("*"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+
+        config.setAllowedOrigins(List.of(
+                "https://job-portal-frontend-gfqp8u3hy-prachi088s-projects.vercel.app"
+        ));
+
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+        ));
+
+        config.setAllowedHeaders(List.of("*"));
+
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+
+                .cors(cors ->
+                        cors.configurationSource(
+                                corsConfigurationSource()
+                        )
                 )
-                // FIX: Without an AuthenticationEntryPoint, Spring Security returns 403
-                // (not 401) for requests where no authentication is set — including
-                // expired JWTs, because JwtFilter silently skips them.
-                // This makes the frontend's response interceptor correctly distinguish
-                // "token expired / not logged in" (401) from "authenticated but forbidden" (403).
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("application/json");
-                            response.getWriter().write("{\"error\":\"Unauthorized - token missing or expired\"}");
-                        })
+                        .authenticationEntryPoint(
+                                (request, response, authException) -> {
+
+                                    response.setStatus(
+                                            HttpServletResponse.SC_UNAUTHORIZED
+                                    );
+
+                                    response.setContentType(
+                                            "application/json"
+                                    );
+
+                                    response.getWriter().write(
+                                            "{\"error\":\"Unauthorized\"}"
+                                    );
+                                }
+                        )
                 )
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/health").permitAll()
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/api/users").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/jobs").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/jobs/search").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/events").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/connections/users/all").permitAll()
+                        .requestMatchers("/auth/**")
+                        .permitAll()
 
-                        .anyRequest().authenticated()
+                        .requestMatchers("/health")
+                        .permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/jobs"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/jobs/search"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/events"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/connections/users/all"
+                        ).permitAll()
+
+                        .anyRequest()
+                        .authenticated()
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+                .addFilterBefore(
+                        jwtFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
