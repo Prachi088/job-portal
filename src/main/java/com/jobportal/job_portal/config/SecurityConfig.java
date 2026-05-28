@@ -37,8 +37,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of(
-                "https://job-portal-frontend-gfqp8u3hy-prachi088s-projects.vercel.app"
-        ));
+                "https://*.vercel.app"));
 
         config.setAllowedMethods(List.of(
                 "GET",
