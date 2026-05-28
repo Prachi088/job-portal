@@ -6,7 +6,9 @@ import com.jobportal.job_portal.entity.User;
 import com.jobportal.job_portal.repository.ConnectionRepository;
 import com.jobportal.job_portal.repository.ConnectionRequestRepository;
 import com.jobportal.job_portal.repository.UserRepository;
+import com.jobportal.job_portal.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +27,18 @@ public class ConnectionController {
     @Autowired ConnectionRepository        connectionRepo;
     @Autowired UserRepository              userRepo;
 
+    // FIX: injected so updateRequest can validate the caller's identity from
+    // the JWT, the same pattern MessageController already uses.
+    @Autowired JwtUtil jwtUtil;
+
+    // ── Helper: extract and validate caller ID from Authorization header ──────
+    private Long getAuthenticatedUserId(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
+        String token = authHeader.substring(7);
+        if (!jwtUtil.isTokenValid(token)) return null;
+        return jwtUtil.extractUserId(token);
+    }
+
     // ── Send a connection request ─────────────────────────────────────────────
     @PostMapping("/request")
     public ResponseEntity<?> sendRequest(@RequestBody Map<String, Long> body) {
@@ -41,12 +55,14 @@ public class ConnectionController {
         if (connectionRepo.existsBetweenUsers(senderId, receiverId))
             return ResponseEntity.badRequest().body("Already connected");
 
-        if (requestRepo.existsBySenderIdAndReceiverId(senderId, receiverId))
+        // FIX: Only block on PENDING requests — not on REJECTED or ACCEPTED ones.
+        // The old existsBySenderIdAndReceiverId check found any row regardless of
+        // status, so a previously REJECTED request permanently prevented the sender
+        // from trying again. Now we only block if there is an active PENDING row.
+        if (requestRepo.existsBySenderIdAndReceiverIdAndStatus(senderId, receiverId, "PENDING"))
             return ResponseEntity.badRequest().body("Request already sent");
 
-        // Block if the other side already sent a request to prevent two
-        // pending rows for the same pair.
-        if (requestRepo.existsBySenderIdAndReceiverId(receiverId, senderId))
+        if (requestRepo.existsBySenderIdAndReceiverIdAndStatus(receiverId, senderId, "PENDING"))
             return ResponseEntity.badRequest().body("A request from this user is already pending");
 
         ConnectionRequest req = new ConnectionRequest();
@@ -59,14 +75,34 @@ public class ConnectionController {
 
     // ── Accept or reject a request ────────────────────────────────────────────
     @PutMapping("/request/{id}")
-    public ResponseEntity<?> updateRequest(@PathVariable Long id,
-                                           @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateRequest(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+
+        // FIX: Validate the caller's identity from the JWT.
+        // Previously this endpoint had NO ownership check — any authenticated
+        // user could accept or reject any request just by knowing its ID.
+        // Now we extract the caller's user ID from the token and verify they
+        // are the intended receiver of this particular request.
+        Long callerId = getAuthenticatedUserId(authHeader);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Authorization header is missing or token is invalid/expired");
+        }
+
         String status = body.get("status");
         if (!"ACCEPTED".equals(status) && !"REJECTED".equals(status))
             return ResponseEntity.badRequest().body("Status must be ACCEPTED or REJECTED");
 
         ConnectionRequest req = requestRepo.findById(id).orElse(null);
         if (req == null) return ResponseEntity.notFound().build();
+
+        // FIX: Ownership guard — only the receiver may accept or reject.
+        if (!req.getReceiverId().equals(callerId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Only the receiver of this request may update it");
+        }
 
         req.setStatus(status);
         requestRepo.save(req);
