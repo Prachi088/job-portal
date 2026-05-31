@@ -34,10 +34,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("*"));
+
+        // allowCredentials must be false when using wildcard origins.
+        // Since we use JWT in Authorization header (not cookies), we don't
+        // need credentials=true at all.
+        config.setAllowCredentials(false);
+
+        // AWS production origins only
+        config.setAllowedOrigins(List.of(
+                "http://job-portal-frontend-prach.s3-website.ap-south-1.amazonaws.com"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -52,7 +62,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                // FIX: Without an AuthenticationEntryPoint, Spring Security returns 403
+                // Without an AuthenticationEntryPoint, Spring Security returns 403
                 // (not 401) for requests where no authentication is set — including
                 // expired JWTs, because JwtFilter silently skips them.
                 // This makes the frontend's response interceptor correctly distinguish
@@ -69,6 +79,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/health").permitAll()
+                        .requestMatchers("/chat").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/users").permitAll()
                         .requestMatchers(HttpMethod.GET, "/jobs").permitAll()

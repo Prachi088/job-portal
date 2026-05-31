@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -43,12 +44,33 @@ public class UserController {
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
             User user = userRepository.findById(id).orElse(null);
-            if (user == null) {
-                return ResponseEntity.notFound().build();
-            }
+            if (user == null) return ResponseEntity.notFound().build();
             return ResponseEntity.ok(user);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to fetch user: " + e.getMessage());
+        }
+    }
+
+    // ── Presence endpoint ─────────────────────────────────────────────────────
+    // Returns { isOnline, lastSeenAt } for a given user.
+    // isOnline = true when lastSeenAt is within the last 2 minutes.
+    // Called by the frontend every 30 seconds to update the chat header status.
+    @GetMapping("/{id}/presence")
+    public ResponseEntity<?> getUserPresence(@PathVariable Long id) {
+        try {
+            User user = userRepository.findById(id).orElse(null);
+            if (user == null) return ResponseEntity.notFound().build();
+
+            LocalDateTime lastSeen = user.getLastSeenAt();
+            boolean isOnline = lastSeen != null &&
+                    lastSeen.isAfter(LocalDateTime.now().minusMinutes(2));
+
+            return ResponseEntity.ok(Map.of(
+                    "isOnline",    isOnline,
+                    "lastSeenAt",  lastSeen != null ? lastSeen.toString() : ""
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to fetch presence: " + e.getMessage());
         }
     }
 
@@ -56,11 +78,8 @@ public class UserController {
     public ResponseEntity<?> updateProfile(@PathVariable Long id, @RequestBody User profileData) {
         try {
             User user = userRepository.findById(id).orElse(null);
-            if (user == null) {
-                return ResponseEntity.notFound().build();
-            }
+            if (user == null) return ResponseEntity.notFound().build();
 
-            // Existing fields
             if (profileData.getPhone() != null)       user.setPhone(profileData.getPhone());
             if (profileData.getAddress() != null)     user.setAddress(profileData.getAddress());
             if (profileData.getSkills() != null)      user.setSkills(profileData.getSkills());
@@ -70,8 +89,6 @@ public class UserController {
             if (profileData.getCurrentRole() != null) user.setCurrentRole(profileData.getCurrentRole());
             if (profileData.getLinkedinUrl() != null) user.setLinkedinUrl(profileData.getLinkedinUrl());
             if (profileData.getWebsite() != null)     user.setWebsite(profileData.getWebsite());
-
-            // NEW fields
             if (profileData.getBio() != null)         user.setBio(profileData.getBio());
             if (profileData.getProjects() != null)    user.setProjects(profileData.getProjects());
             if (profileData.getBatch() != null)       user.setBatch(profileData.getBatch());
@@ -87,19 +104,16 @@ public class UserController {
     public ResponseEntity<?> uploadResume(@PathVariable Long id, @RequestParam("resume") MultipartFile file) {
         try {
             User user = userRepository.findById(id).orElse(null);
-            if (user == null) {
-                return ResponseEntity.notFound().build();
-            }
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body("Resume file is required");
-            }
+            if (user == null) return ResponseEntity.notFound().build();
+            if (file.isEmpty()) return ResponseEntity.badRequest().body("Resume file is required");
+
             String base64Data = Base64.getEncoder().encodeToString(file.getBytes());
             user.setResumeFileName(file.getOriginalFilename());
             user.setResumeFilePath("db");
             user.setResumeData(base64Data);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of(
-                    "message", "Resume uploaded successfully",
+                    "message",  "Resume uploaded successfully",
                     "fileName", file.getOriginalFilename()
             ));
         } catch (Exception e) {
@@ -111,9 +125,8 @@ public class UserController {
     public ResponseEntity<?> downloadResume(@PathVariable Long id) {
         try {
             User user = userRepository.findById(id).orElse(null);
-            if (user == null || user.getResumeData() == null) {
-                return ResponseEntity.notFound().build();
-            }
+            if (user == null || user.getResumeData() == null) return ResponseEntity.notFound().build();
+
             byte[] fileContent = Base64.getDecoder().decode(user.getResumeData());
             return ResponseEntity.ok()
                     .header("Content-Disposition", "attachment; filename=\"" + user.getResumeFileName() + "\"")

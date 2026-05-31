@@ -2,6 +2,7 @@ package com.jobportal.job_portal.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -16,9 +17,6 @@ public class User {
     @Column(unique = true)
     private String email;
 
-    // FIX: @JsonIgnore prevents the hashed password from being included in
-    // any API response (getAllUsers, getUserById, register, etc.).
-    // Without this, every user listing endpoint leaks password hashes.
     @JsonIgnore
     private String password;
 
@@ -36,9 +34,6 @@ public class User {
     private String projects;
     private String batch;
 
-    // FIX: @JsonIgnore prevents base64 resume data from being included in
-    // list responses (getAllUsers), which would bloat payloads massively.
-    // Resume is only needed via the dedicated /resume download endpoint.
     @JsonIgnore
     @Column(columnDefinition = "TEXT")
     private String resumeData;
@@ -51,6 +46,11 @@ public class User {
 
     private String linkedinUrl;
     private String website;
+
+    // ── Presence ──────────────────────────────────────────────────────────────
+    // Updated every time the user makes an authenticated request (via JwtFilter).
+    // isOnline is derived on read: lastSeenAt within last 2 minutes = online.
+    private LocalDateTime lastSeenAt;
 
     public User() {}
 
@@ -122,4 +122,7 @@ public class User {
 
     public String getWebsite() { return website; }
     public void setWebsite(String website) { this.website = website; }
+
+    public LocalDateTime getLastSeenAt() { return lastSeenAt; }
+    public void setLastSeenAt(LocalDateTime lastSeenAt) { this.lastSeenAt = lastSeenAt; }
 }
