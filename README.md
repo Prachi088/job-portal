@@ -2,6 +2,11 @@
 
 A **Spring Boot** REST API powering the SATI Alumni Portal — a full-stack college networking platform for **Samrat Ashok Technological Institute (SATI), Vidisha**. It handles authentication, job postings, applications, events, real-time messaging, connections, notifications, and an AI career assistant.
 
+> **Live API:** [job-portal-3xoq.onrender.com](https://job-portal-3xoq.onrender.com)
+> **Frontend Repo:** [github.com/Prachi088/job-portal-frontend](https://github.com/Prachi088/job-portal-frontend)
+>
+> ⚠️ Hosted on Render's free tier, which spins down after inactivity. The first request after idle time may take **30–60 seconds** to wake up — this is expected, not a bug. Neon's free-tier database also auto-suspends after inactivity and wakes automatically on the next query, with a similar brief delay.
+
 ---
 
 ## Table of Contents
@@ -29,6 +34,7 @@ A **Spring Boot** REST API powering the SATI Alumni Portal — a full-stack coll
 8. [AI Integration — GroqService](#ai-integration--groqservice)
 9. [Running the Project](#running-the-project)
 10. [Deployment](#deployment)
+11. [Known Notes](#known-notes)
 
 ---
 
@@ -47,14 +53,15 @@ Two user roles are supported:
 
 | Layer | Technology |
 |---|---|
-| Framework | Spring Boot 3.x |
-| Security | Spring Security + JWT (jjwt) |
+| Framework | Spring Boot 3.2.5 |
+| Security | Spring Security + JWT (jjwt 0.11.5) |
 | ORM | Spring Data JPA (Hibernate) |
-| Database | MySQL (configurable via `application.properties`) |
+| Database | PostgreSQL (Neon, serverless) |
 | Password Hashing | BCrypt |
 | AI Integration | Groq API (Llama 3.3 70B) via `RestTemplate` |
 | Build Tool | Maven |
-| Runtime | Java 17+ |
+| Runtime | Java 21 |
+| Deployment | Render (Docker) |
 
 ---
 
@@ -107,32 +114,41 @@ src/main/java/com/jobportal/job_portal/
 
 ## Configuration
 
-Create `src/main/resources/application.properties`:
+The app reads all config from environment variables, with local-dev-friendly defaults in `application.properties`. **No driver class is hardcoded** — Spring Boot auto-detects the correct JDBC driver (PostgreSQL) from the URL scheme.
 
-```properties
-# Server
-server.port=8080
+For local development:
 
-# Database
-spring.datasource.url=jdbc:mysql://localhost:3306/job_portal
-spring.datasource.username=your_db_username
-spring.datasource.password=your_db_password
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
+```env
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/job_portal_db
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=your_local_postgres_password
 
-# JWT
-jwt.secret=your_secret_key_minimum_32_characters_long
-jwt.expiration=86400000
+JWT_SECRET=any_random_string_at_least_32_characters_long
+JWT_EXPIRATION=86400000
 
-# Groq AI
-groq.api.key=your_groq_api_key
+GROQ_API_KEY=your_groq_api_key
 
-# File upload limit (resumes stored as Base64 in DB)
-spring.servlet.multipart.max-file-size=10MB
-spring.servlet.multipart.max-request-size=10MB
+CORS_ORIGINS=http://localhost:5173
 ```
 
-> **Note:** `jwt.secret` must be at least 32 characters for HS256. If it is shorter, `JwtUtil` will throw an `IllegalStateException` on startup.
+For **production** (Render + Neon):
+
+```env
+SPRING_DATASOURCE_URL=jdbc:postgresql://<your-neon-host>.neon.tech/neondb?sslmode=require
+SPRING_DATASOURCE_USERNAME=<neon-username>
+SPRING_DATASOURCE_PASSWORD=<neon-password>
+
+JWT_SECRET=<a real random secret — generate with: openssl rand -base64 48>
+JWT_EXPIRATION=86400000
+
+GROQ_API_KEY=<your-groq-key>
+
+CORS_ORIGINS=https://your-frontend-url.vercel.app
+```
+
+> **Neon note:** the database name is typically `neondb` by default — this is different from your Neon *project* name (shown in the console sidebar). Double-check `SPRING_DATASOURCE_URL` points at the actual database, not the project name. Also drop any `&channel_binding=require` parameter from a copied Neon connection string — Spring's JDBC driver doesn't recognize it; `sslmode=require` alone is sufficient.
+
+> **jwt.secret must be at least 32 characters** for HS256. If it is shorter, `JwtUtil` throws an `IllegalStateException` on startup.
 
 ---
 
@@ -169,7 +185,9 @@ This passive presence tracking means the frontend never needs a dedicated "ping"
 
 ### SecurityConfig — CORS & Route Guards
 
-CORS is locked to the production AWS S3 frontend origin. `allowCredentials` is `false` because auth is handled via the `Authorization` header (JWT), not cookies.
+CORS allowed origins are read from the `CORS_ORIGINS` environment variable (comma-separated if multiple), not hardcoded in source. `allowCredentials` is `false` because auth is handled via the `Authorization` header (JWT), not cookies.
+
+To add or change an allowed frontend origin, update `CORS_ORIGINS` in Render's environment settings — no code change or redeploy of source required, just a restart.
 
 **Publicly accessible routes** (no token required):
 
@@ -212,7 +230,7 @@ All other routes require a valid JWT. Missing or expired tokens return **401** (
 
 ## API Reference
 
-All endpoints are prefixed relative to the base URL (default `http://localhost:8080`).
+All endpoints are prefixed relative to the base URL (default `http://localhost:8080` locally, `https://job-portal-3xoq.onrender.com` in production).
 
 ---
 
@@ -448,7 +466,7 @@ The endpoint is public (no JWT required) so unauthenticated users can still acce
 |---|---|---|---|
 | GET | `/health` | No | Check if the server is running |
 
-Returns a simple 200 response — used by the frontend to verify backend connectivity before showing the app.
+Returns a simple 200 response — used by the frontend to verify backend connectivity before showing the app, and by Render's health monitoring.
 
 ---
 
@@ -469,18 +487,18 @@ The Groq API key is injected via `@Value("${groq.api.key}")` from `application.p
 
 ### Prerequisites
 
-- Java 17+
-- Maven 3.8+
-- MySQL 8+ running locally (or a remote instance)
+- **Java 21** (matches `pom.xml`'s `java.version` — Java 17 or lower will fail to compile)
+- Maven 3.8+ (or the included `mvnw` wrapper)
+- PostgreSQL running locally (or a remote instance, e.g. [Neon](https://neon.tech) for serverless Postgres)
 
 ### Setup
 
-1. Create the database:
+1. Create the local database:
 ```sql
-CREATE DATABASE job_portal;
+CREATE DATABASE job_portal_db;
 ```
 
-2. Fill in `application.properties` with your DB credentials, JWT secret, and Groq API key (see [Configuration](#configuration)).
+2. Set environment variables per [Configuration](#configuration) above (or export them in your shell / IDE run config).
 
 3. Build and run:
 ```bash
@@ -496,21 +514,44 @@ mvn clean package -DskipTests
 java -jar target/job-portal-0.0.1-SNAPSHOT.jar
 ```
 
+### Docker
+
+A `Dockerfile` is included (multi-stage: Maven build → JRE runtime, both on Java 21):
+
+```bash
+docker build -t job-portal-backend .
+docker run -p 10000:10000 --env-file .env job-portal-backend
+```
+
 ---
 
 ## Deployment
 
-The backend is deployed on **AWS EC2** (ap-south-1). The frontend S3 origin is whitelisted in `SecurityConfig.corsConfigurationSource()`. To add a new allowed origin (e.g. a local dev frontend), update the `setAllowedOrigins` list in `SecurityConfig.java`.
+The backend is deployed on **Render** (Docker-based web service), connected to a **Neon PostgreSQL** database.
 
-For production, set environment variables instead of hardcoding secrets in `application.properties`:
+| Setting | Value |
+|---|---|
+| Environment | Docker (`Dockerfile` at repo root) |
+| Port | Dynamic — Render assigns via the `PORT` env var; the app binds to `${PORT:10000}` |
+| Database | Neon Postgres, connection via `SPRING_DATASOURCE_URL` |
+
+To add or change an allowed frontend origin, update the `CORS_ORIGINS` environment variable in Render's dashboard — **no code change or redeploy required**, just enough of a restart for the new env var to load.
+
+For production, secrets are set as Render environment variables, never committed to source:
 
 ```bash
-export JWT_SECRET=your_long_random_secret
-export GROQ_API_KEY=gsk_...
+SPRING_DATASOURCE_URL=jdbc:postgresql://<neon-host>/neondb?sslmode=require
+SPRING_DATASOURCE_USERNAME=<neon-user>
+SPRING_DATASOURCE_PASSWORD=<neon-password>
+JWT_SECRET=<random 32+ character secret>
+GROQ_API_KEY=gsk_...
+CORS_ORIGINS=<your deployed frontend URL(s), comma-separated>
 ```
 
-And reference them in `application.properties`:
-```properties
-jwt.secret=${JWT_SECRET}
-groq.api.key=${GROQ_API_KEY}
-```
+---
+
+## Known Notes
+
+- Postgres is the sole supported database — no MySQL dependency or configuration remains.
+- Vercel (used for the frontend) generates a unique preview URL for every deploy in addition to a stable production URL. `CORS_ORIGINS` should generally point at the stable production URL; preview URLs will be blocked unless explicitly added.
+- New user registrations default based on the role provided at signup (`STUDENT` or `RECRUITER`) — there is currently no server-side restriction preventing a client from requesting either role at registration, unlike an admin-gated system.
