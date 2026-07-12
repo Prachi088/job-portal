@@ -3,6 +3,7 @@ package com.jobportal.job_portal.config;
 import com.jobportal.job_portal.security.JwtFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -25,6 +27,15 @@ public class SecurityConfig {
 
     @Autowired
     private JwtFilter jwtFilter;
+
+    // FIX: was hardcoded to the old AWS S3 frontend URL
+    // ("http://job-portal-frontend-prach.s3-website.ap-south-1.amazonaws.com"),
+    // which meant every deploy to a new frontend host required editing this
+    // file and redeploying. Now driven by the CORS_ORIGINS env var, same
+    // pattern as the CRM Lite project — update the allowed origin(s) in
+    // Render's dashboard without touching code.
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,10 +51,8 @@ public class SecurityConfig {
         // need credentials=true at all.
         config.setAllowCredentials(false);
 
-        // AWS production origins only
-        config.setAllowedOrigins(List.of(
-                "http://job-portal-frontend-prach.s3-website.ap-south-1.amazonaws.com"
-        ));
+        List<String> origins = Arrays.asList(allowedOrigins.split(","));
+        config.setAllowedOrigins(origins);
 
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
